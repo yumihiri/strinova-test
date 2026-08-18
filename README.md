@@ -6,9 +6,16 @@
 HPバー・勝敗判定・リセットボタンを備えたバトル画面のみで完結する最小構成。
 CPU対CPUの観戦専用で、プレイヤーが操作できるのはリセットボタンのみ。
 
+C# / MonoGame で実装している(`BallBattle/`)。文字表示はコンテンツパイプライン(SpriteFont)を使わず、
+自前の5x7ドットビットマップフォント(`PixelFont.cs`)で描画しているため、追加のフォント資産は不要。
+
 ## 実行方法
 
+.NET 8 SDK が必要。
+
 ```bash
-pip install -r requirements.txt
-python main.py
+cd BallBattle
+dotnet run
 ```
+
+VS Codeの場合は `BallBattle` フォルダを開き、ターミナルで上記コマンドを実行すればよい。
