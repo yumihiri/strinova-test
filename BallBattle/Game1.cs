@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using FontStashSharp;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -20,6 +21,12 @@ public class Game1 : Game
     private SpriteBatch _spriteBatch = null!;
     private Texture2D _pixel = null!;
     private Texture2D _fallbackIcon = null!;
+
+    private FontSystem _fontSystem = null!;
+    private SpriteFontBase _titleFont = null!;
+    private SpriteFontBase _labelFont = null!;
+    private SpriteFontBase _buttonFont = null!;
+    private SpriteFontBase _resultFont = null!;
 
     private readonly Random _random = new();
     private Ball _ballA = null!;
@@ -64,6 +71,14 @@ public class Game1 : Game
 
         _contentRoot = Path.Combine(AppContext.BaseDirectory, "Content");
         _characters = CharacterLoader.LoadCharacters(Path.Combine(_contentRoot, "Characters", "characters.json"));
+
+        // 日本語を含む文字描画用に、同梱のIPAゴシックフォントを読み込む
+        _fontSystem = new FontSystem();
+        _fontSystem.AddFont(File.ReadAllBytes(Path.Combine(_contentRoot, "Fonts", "ipag.ttf")));
+        _titleFont = _fontSystem.GetFont(28);
+        _labelFont = _fontSystem.GetFont(16);
+        _buttonFont = _fontSystem.GetFont(20);
+        _resultFont = _fontSystem.GetFont(40);
     }
 
     private Texture2D GetIcon(CharacterData character)
@@ -169,9 +184,9 @@ public class Game1 : Game
 
     private static string? GetResultText(Ball a, Ball b)
     {
-        if (!a.Alive && !b.Alive) return "DRAW!";
-        if (!a.Alive) return $"{b.Name} WINS!";
-        if (!b.Alive) return $"{a.Name} WINS!";
+        if (!a.Alive && !b.Alive) return "引き分け!";
+        if (!a.Alive) return $"{b.Name} の勝ち!";
+        if (!b.Alive) return $"{a.Name} の勝ち!";
         return null;
     }
 
@@ -205,9 +220,9 @@ public class Game1 : Game
 
     private void DrawTitle()
     {
-        const string title = "BALL BATTLE";
-        var width = PixelFont.MeasureWidth(title, 4);
-        PixelFont.DrawText(_spriteBatch, _pixel, title, new Vector2(GameConfig.WindowWidth / 2f - width / 2f, 16), 4, GameConfig.TextDark);
+        const string title = "玉対戦ゲーム";
+        var size = _titleFont.MeasureString(title);
+        _titleFont.DrawText(_spriteBatch, title, new Vector2(GameConfig.WindowWidth / 2f - size.X / 2f, 12), GameConfig.TextDark);
     }
 
     private void DrawHpBar(Ball ball, int x, int y, bool alignRight)
@@ -215,10 +230,10 @@ public class Game1 : Game
         const int width = 240;
         const int height = 22;
 
-        var label = $"{ball.Name} HP {ball.Hp}/{ball.MaxHp}";
-        var labelWidth = PixelFont.MeasureWidth(label, 2);
-        var labelX = alignRight ? x + width - labelWidth : x;
-        PixelFont.DrawText(_spriteBatch, _pixel, label, new Vector2(labelX, y - 20), 2, GameConfig.TextDark);
+        var label = $"{ball.Name}  HP {ball.Hp}/{ball.MaxHp}";
+        var labelSize = _labelFont.MeasureString(label);
+        var labelX = alignRight ? x + width - labelSize.X : x;
+        _labelFont.DrawText(_spriteBatch, label, new Vector2(labelX, y - labelSize.Y - 2), GameConfig.TextDark);
 
         FillRect(new Rectangle(x, y, width, height), GameConfig.HpBarBg);
         var ratio = ball.MaxHp > 0 ? (float)ball.Hp / ball.MaxHp : 0f;
@@ -264,13 +279,12 @@ public class Game1 : Game
         FillRect(_buttonRect, hover ? GameConfig.ButtonHoverBg : GameConfig.ButtonBg);
         DrawRectBorder(_buttonRect, GameConfig.TextDark, 2);
 
-        const string label = "RESET";
-        var labelWidth = PixelFont.MeasureWidth(label, 2);
-        var labelHeight = PixelFont.Height(2);
+        const string label = "リセット";
+        var size = _buttonFont.MeasureString(label);
         var pos = new Vector2(
-            _buttonRect.Center.X - labelWidth / 2f,
-            _buttonRect.Center.Y - labelHeight / 2f);
-        PixelFont.DrawText(_spriteBatch, _pixel, label, pos, 2, Color.White);
+            _buttonRect.Center.X - size.X / 2f,
+            _buttonRect.Center.Y - size.Y / 2f);
+        _buttonFont.DrawText(_spriteBatch, label, pos, Color.White);
     }
 
     private void DrawResultOverlay(string text)
@@ -278,12 +292,11 @@ public class Game1 : Game
         var overlay = new Color(0, 0, 0, 120);
         FillRect(GameConfig.FieldRect, overlay);
 
-        var width = PixelFont.MeasureWidth(text, 6);
-        var height = PixelFont.Height(6);
+        var size = _resultFont.MeasureString(text);
         var pos = new Vector2(
-            GameConfig.WindowWidth / 2f - width / 2f,
-            GameConfig.FieldTop + GameConfig.FieldSize / 2f - height / 2f);
-        PixelFont.DrawText(_spriteBatch, _pixel, text, pos, 6, Color.White);
+            GameConfig.WindowWidth / 2f - size.X / 2f,
+            GameConfig.FieldTop + GameConfig.FieldSize / 2f - size.Y / 2f);
+        _resultFont.DrawText(_spriteBatch, text, pos, Color.White);
     }
 
     private void FillRect(Rectangle rect, Color color) => _spriteBatch.Draw(_pixel, rect, color);

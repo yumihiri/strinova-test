@@ -34,13 +34,9 @@ public class Ball
         PickNewDirection();
     }
 
-    /// <summary>
-    /// characters.jsonから読み込んだキャラクターデータで玉を生成する。
-    /// 画面上の表示名は、現状のPixelFontが日本語グリフを持たないため、
-    /// キャラID(ローマ字)を大文字化したものを使う。本来のキャラ名は Character.Name から参照できる。
-    /// </summary>
+    /// <summary>characters.jsonから読み込んだキャラクターデータで玉を生成する。</summary>
     public Ball(Vector2 position, Color color, CharacterData character, Texture2D? icon, Random random)
-        : this(position, color, character.Id.ToUpperInvariant(), random, character.Hp, character.Speed)
+        : this(position, color, character.Name, random, character.Hp, character.Speed)
     {
         Character = character;
         Icon = icon;

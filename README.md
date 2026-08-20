@@ -10,10 +10,9 @@
 (リセットのたびに組み合わせが変わる)。ステータス(HP・移動速度)は未調整のため現状は全キャラ共通値。
 スキル・必殺技はまだ未実装(次段階以降)。
 
-C# / MonoGame で実装している(`BallBattle/`)。文字表示はコンテンツパイプライン(SpriteFont)を使わず、
-自前の5x7ドットビットマップフォント(`PixelFont.cs`)で描画しているため、追加のフォント資産は不要。
-ただし日本語グリフは未対応なので、画面上のキャラ名表示はキャラID(ローマ字)を使っている
-(例: 「イヴェット」→「YVETTE」)。本来の日本語名は `characters.json` の `name` フィールドに保持している。
+C# / MonoGame で実装している(`BallBattle/`)。文字描画は [FontStashSharp](https://github.com/FontStashSharp/FontStashSharp)
+を使い、同梱のIPAゴシックフォント(`Content/Fonts/ipag.ttf`、IPAフォントライセンスv1.0で再配布可)で
+日本語を含めて描画している。コンテンツパイプライン(SpriteFont/MGCB)は不要で、実行時にTTFを直接読み込む方式。
 
 キャラアイコンは、まだ個別画像が用意されていないため、全キャラ共通のプレースホルダー画像
 (`Content/Icons/placeholder.png`)を表示する。`characters.json` の `icon` に個別画像パスを指定すれば
