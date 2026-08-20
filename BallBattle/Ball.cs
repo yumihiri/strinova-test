@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace BallBattle;
 
@@ -10,6 +11,8 @@ public class Ball
     public Vector2 Velocity;
     public Color Color;
     public string Name;
+    public CharacterData? Character;
+    public Texture2D? Icon;
     public float Radius = GameConfig.BallRadius;
     public int MaxHp = GameConfig.InitialHp;
     public int Hp = GameConfig.InitialHp;
@@ -19,13 +22,28 @@ public class Ball
 
     private readonly Random _random;
 
-    public Ball(Vector2 position, Color color, string name, Random random)
+    public Ball(Vector2 position, Color color, string name, Random random, int maxHp = GameConfig.InitialHp, float speed = GameConfig.BaseSpeed)
     {
         Position = position;
         Color = color;
         Name = name;
         _random = random;
+        MaxHp = maxHp;
+        Hp = maxHp;
+        Speed = speed;
         PickNewDirection();
+    }
+
+    /// <summary>
+    /// characters.jsonから読み込んだキャラクターデータで玉を生成する。
+    /// 画面上の表示名は、現状のPixelFontが日本語グリフを持たないため、
+    /// キャラID(ローマ字)を大文字化したものを使う。本来のキャラ名は Character.Name から参照できる。
+    /// </summary>
+    public Ball(Vector2 position, Color color, CharacterData character, Texture2D? icon, Random random)
+        : this(position, color, character.Id.ToUpperInvariant(), random, character.Hp, character.Speed)
+    {
+        Character = character;
+        Icon = icon;
     }
 
     /// <summary>

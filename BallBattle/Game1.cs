@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -6,20 +9,26 @@ using Microsoft.Xna.Framework.Input;
 namespace BallBattle;
 
 /// <summary>
-/// 玉対戦ゲーム - 土台 + 基本UI (要件定義書セクション10の1・2)。
+/// 玉対戦ゲーム - 土台 + 基本UI + キャラクターのJSON化(要件定義書セクション10の1〜3)。
 /// 正方形フィールド内で2つの玉がランダム移動し、接触するとダメージを与え合う。
 /// HPが0になった方が負け。CPU対CPUの観戦専用で、プレイヤーはリセットボタンのみ操作できる。
+/// 対戦する2キャラはcharacters.jsonの一覧からランダムに選ばれる。
 /// </summary>
 public class Game1 : Game
 {
     private readonly GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch = null!;
     private Texture2D _pixel = null!;
+    private Texture2D _fallbackIcon = null!;
 
     private readonly Random _random = new();
     private Ball _ballA = null!;
     private Ball _ballB = null!;
     private string? _resultText;
+
+    private string _contentRoot = "";
+    private List<CharacterData> _characters = new();
+    private readonly Dictionary<string, Texture2D> _iconCache = new();
 
     private Rectangle _buttonRect;
     private bool _prevMouseDown;
@@ -39,8 +48,9 @@ public class Game1 : Game
     protected override void Initialize()
     {
         _buttonRect = new Rectangle(GameConfig.WindowWidth / 2 - 80, GameConfig.FieldTop + GameConfig.FieldSize + 16, 160, 44);
-        ResetBalls();
+        // base.Initialize()がLoadContent()を呼ぶので、キャラJSON/アイコン読み込みが終わってからResetBallsする
         base.Initialize();
+        ResetBalls();
     }
 
     protected override void LoadContent()
@@ -48,13 +58,51 @@ public class Game1 : Game
         _spriteBatch = new SpriteBatch(GraphicsDevice);
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
+
+        _fallbackIcon = new Texture2D(GraphicsDevice, 1, 1);
+        _fallbackIcon.SetData(new[] { new Color(160, 160, 160) });
+
+        _contentRoot = Path.Combine(AppContext.BaseDirectory, "Content");
+        _characters = CharacterLoader.LoadCharacters(Path.Combine(_contentRoot, "Characters", "characters.json"));
+    }
+
+    private Texture2D GetIcon(CharacterData character)
+    {
+        if (string.IsNullOrEmpty(character.Icon)) return _fallbackIcon;
+        if (_iconCache.TryGetValue(character.Icon, out var cached)) return cached;
+
+        var texture = CharacterLoader.LoadIcon(GraphicsDevice, _contentRoot, character.Icon, _fallbackIcon);
+        _iconCache[character.Icon] = texture;
+        return texture;
+    }
+
+    /// <summary>characters.jsonから重複なしで2キャラをランダムに選ぶ。</summary>
+    private (CharacterData? A, CharacterData? B) PickTwoRandomCharacters()
+    {
+        if (_characters.Count < 2) return (null, null);
+        var picked = _characters.OrderBy(_ => _random.Next()).Take(2).ToArray();
+        return (picked[0], picked[1]);
     }
 
     private void ResetBalls()
     {
         var margin = GameConfig.FieldSize / 4;
-        _ballA = new Ball(new Vector2(GameConfig.FieldLeft + margin, GameConfig.FieldTop + margin), GameConfig.BallRed, "RED", _random);
-        _ballB = new Ball(new Vector2(GameConfig.FieldLeft + GameConfig.FieldSize - margin, GameConfig.FieldTop + GameConfig.FieldSize - margin), GameConfig.BallBlue, "BLUE", _random);
+        var posA = new Vector2(GameConfig.FieldLeft + margin, GameConfig.FieldTop + margin);
+        var posB = new Vector2(GameConfig.FieldLeft + GameConfig.FieldSize - margin, GameConfig.FieldTop + GameConfig.FieldSize - margin);
+
+        var (charA, charB) = PickTwoRandomCharacters();
+        if (charA is not null && charB is not null)
+        {
+            _ballA = new Ball(posA, GameConfig.BallRed, charA, GetIcon(charA), _random);
+            _ballB = new Ball(posB, GameConfig.BallBlue, charB, GetIcon(charB), _random);
+        }
+        else
+        {
+            // characters.jsonが読み込めない場合のフォールバック
+            _ballA = new Ball(posA, GameConfig.BallRed, "RED", _random);
+            _ballB = new Ball(posB, GameConfig.BallBlue, "BLUE", _random);
+        }
+
         _resultText = null;
     }
 
@@ -199,6 +247,14 @@ public class Game1 : Game
         }
         FillCircle(ball.Position, ball.Radius, color);
         DrawCircleOutline(ball.Position, ball.Radius, GameConfig.TextDark, 2);
+
+        if (ball.Icon is not null)
+        {
+            var iconSize = (int)(ball.Radius * 1.5f);
+            var dest = new Rectangle((int)ball.Position.X - iconSize / 2, (int)ball.Position.Y - iconSize / 2, iconSize, iconSize);
+            var tint = ball.Alive ? Color.White : new Color(190, 190, 190);
+            _spriteBatch.Draw(ball.Icon, dest, tint);
+        }
     }
 
     private void DrawButton()
