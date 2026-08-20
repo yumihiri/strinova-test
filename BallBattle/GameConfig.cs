@@ -25,18 +25,40 @@ public static class GameConfig
 
     public static Rectangle FieldRect => new(FieldLeft, FieldTop, FieldSize, FieldSize);
 
-    // ---- 色 ----
-    public static readonly Color WindowBg = new(245, 245, 245);
-    public static readonly Color FieldBg = new(235, 235, 225);
-    public static readonly Color FieldBorder = new(60, 60, 60);
-    public static readonly Color BallRed = new(220, 70, 70);
-    public static readonly Color BallBlue = new(70, 120, 220);
-    public static readonly Color DeadGray = new(120, 120, 120);
-    public static readonly Color HpBarBg = new(60, 60, 60);
-    public static readonly Color HpGreen = new(80, 190, 90);
-    public static readonly Color HpYellow = new(230, 200, 60);
-    public static readonly Color HpRed = new(220, 70, 70);
-    public static readonly Color ButtonBg = new(90, 90, 100);
-    public static readonly Color ButtonHoverBg = new(120, 120, 135);
-    public static readonly Color TextDark = new(20, 20, 20);
+    // ---- 角丸の半径(統一感のためUIパーツ種別ごとにまとめる) ----
+    public const int CardRadius = 16;
+    public const int ButtonRadius = 10;
+    public const int IconRadius = 12;
+    public const int FieldRadius = 18;
+    public const int BarRadius = 8;
+
+    // ---- 色(ダークテーマ) ----
+    public static readonly Color WindowBg = new(17, 19, 28);
+    public static readonly Color PanelBg = new(28, 31, 44);
+    public static readonly Color PanelBorder = new(46, 51, 71);
+
+    public static readonly Color FieldBg = new(24, 27, 38);
+    public static readonly Color FieldBorder = new(52, 58, 80);
+
+    public static readonly Color BallRed = new(255, 92, 114);
+    public static readonly Color BallBlue = new(79, 195, 255);
+    public static readonly Color DeadGray = new(90, 95, 110);
+
+    public static readonly Color HpBarBg = new(38, 42, 56);
+    public static readonly Color HpGreen = new(61, 220, 132);
+    public static readonly Color HpYellow = new(255, 209, 102);
+    public static readonly Color HpRed = new(255, 92, 114);
+
+    public static readonly Color ButtonBg = new(44, 48, 64);
+    public static readonly Color ButtonHoverBg = new(60, 66, 88);
+    public static readonly Color ButtonDisabledBg = new(30, 32, 42);
+
+    public static readonly Color AccentGold = new(255, 209, 102);
+    public static readonly Color AccentPurple = new(150, 130, 255);
+
+    public static readonly Color TextPrimary = new(240, 242, 250);
+    public static readonly Color TextSecondary = new(150, 158, 180);
+    public static readonly Color TextDisabled = new(100, 106, 126);
+    public static readonly Color TextDark = new(20, 20, 20); // 明るい背景(通常攻撃オーバーレイ等)用
+    public static readonly Color ShadowColor = new(0, 0, 0, 90);
 }

@@ -17,9 +17,9 @@ namespace BallBattle;
 public class Game1 : Game
 {
     private const int GridCols = 5;
-    private const int CellSize = 110;
-    private const int IconSize = 64;
-    private const int GridStartY = 70;
+    private const int CellSize = 112;
+    private const int IconSize = 68;
+    private const int GridStartY = 78;
 
     private readonly GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch = null!;
@@ -30,6 +30,7 @@ public class Game1 : Game
     private SpriteFontBase _titleFont = null!;
     private SpriteFontBase _labelFont = null!;
     private SpriteFontBase _smallLabelFont = null!;
+    private SpriteFontBase _tinyLabelFont = null!;
     private SpriteFontBase _buttonFont = null!;
     private SpriteFontBase _resultFont = null!;
 
@@ -71,11 +72,11 @@ public class Game1 : Game
     protected override void Initialize()
     {
         var gridRows = (int)Math.Ceiling(23 / (double)GridCols);
-        _charNextButtonRect = new Rectangle(GameConfig.WindowWidth / 2 - 80, GridStartY + gridRows * CellSize + 24, 160, 44);
-        _mapBackButtonRect = new Rectangle(GameConfig.WindowWidth / 2 - 170, 600, 150, 44);
-        _mapNextButtonRect = new Rectangle(GameConfig.WindowWidth / 2 + 20, 600, 150, 44);
-        _backToSelectButtonRect = new Rectangle(16, 14, 90, 34);
-        _retryButtonRect = new Rectangle(GameConfig.WindowWidth / 2 - 80, GameConfig.FieldTop + GameConfig.FieldSize + 16, 160, 44);
+        _charNextButtonRect = new Rectangle(GameConfig.WindowWidth / 2 - 85, GridStartY + gridRows * CellSize + 30, 170, 46);
+        _mapBackButtonRect = new Rectangle(GameConfig.WindowWidth / 2 - 175, 600, 155, 46);
+        _mapNextButtonRect = new Rectangle(GameConfig.WindowWidth / 2 + 20, 600, 155, 46);
+        _backToSelectButtonRect = new Rectangle(16, 14, 92, 36);
+        _retryButtonRect = new Rectangle(GameConfig.WindowWidth / 2 - 85, GameConfig.FieldTop + GameConfig.FieldSize + 16, 170, 46);
 
         // base.Initialize()がLoadContent()を呼ぶので、キャラ/マップJSON読み込みが終わってから続きを行う
         base.Initialize();
@@ -98,11 +99,12 @@ public class Game1 : Game
         // 日本語を含む文字描画用に、同梱のIPAゴシックフォントを読み込む
         _fontSystem = new FontSystem();
         _fontSystem.AddFont(File.ReadAllBytes(Path.Combine(_contentRoot, "Fonts", "ipag.ttf")));
-        _titleFont = _fontSystem.GetFont(28);
+        _titleFont = _fontSystem.GetFont(30);
         _labelFont = _fontSystem.GetFont(16);
         _smallLabelFont = _fontSystem.GetFont(13);
+        _tinyLabelFont = _fontSystem.GetFont(12);
         _buttonFont = _fontSystem.GetFont(20);
-        _resultFont = _fontSystem.GetFont(40);
+        _resultFont = _fontSystem.GetFont(38);
     }
 
     private Texture2D GetIcon(CharacterData character)
@@ -325,14 +327,19 @@ public class Game1 : Game
         var row = index / GridCols;
         var gridWidth = GridCols * CellSize;
         var gridStartX = (GameConfig.WindowWidth - gridWidth) / 2;
-        return new Rectangle(gridStartX + col * CellSize + 4, GridStartY + row * CellSize + 4, CellSize - 8, CellSize - 8);
+        return new Rectangle(gridStartX + col * CellSize + 5, GridStartY + row * CellSize + 5, CellSize - 10, CellSize - 10);
     }
 
     private void DrawCharacterSelect()
     {
-        const string title = "対戦させる2体を選択";
-        var titleSize = _titleFont.MeasureString(title);
-        _titleFont.DrawText(_spriteBatch, title, new Vector2(GameConfig.WindowWidth / 2f - titleSize.X / 2f, 16), GameConfig.TextDark);
+        var gridRows = (int)Math.Ceiling(_characters.Count / (double)GridCols);
+        var gridWidth = GridCols * CellSize;
+        var gridStartX = (GameConfig.WindowWidth - gridWidth) / 2;
+        var panelRect = new Rectangle(gridStartX - 14, GridStartY - 14, gridWidth + 28, gridRows * CellSize + 28);
+
+        DrawTitleWithAccent("対戦させる2体を選択", GameConfig.AccentPurple);
+
+        DrawPanel(panelRect);
 
         for (var i = 0; i < _characters.Count; i++)
         {
@@ -345,39 +352,45 @@ public class Game1 : Game
             {
                 0 => GameConfig.BallRed,
                 1 => GameConfig.BallBlue,
-                _ => GameConfig.FieldBorder,
+                _ => GameConfig.PanelBorder,
             };
-            var ringThickness = pickIndex >= 0 ? 4 : 1;
+            var ringThickness = pickIndex >= 0 ? 3 : 1;
 
-            _spriteBatch.Draw(GetIcon(character), iconRect, Color.White);
-            DrawRectBorder(iconRect, ringColor, ringThickness);
+            if (pickIndex >= 0)
+            {
+                // 選択中は淡いグロー(一回り大きい角丸を薄い色で敷く)を足して目立たせる
+                FillRoundedRect(Inflate(iconRect, 5), GameConfig.IconRadius + 4, new Color((int)ringColor.R, (int)ringColor.G, (int)ringColor.B, 60));
+            }
 
+            FillRoundedRect(iconRect, GameConfig.IconRadius, GameConfig.PanelBorder);
+            DrawRoundedTexture(GetIcon(character), iconRect, GameConfig.IconRadius, Color.White);
+            DrawRoundedRectBorder(iconRect, GameConfig.IconRadius, ringColor, ringThickness);
+
+            var nameColor = pickIndex >= 0 ? GameConfig.TextPrimary : GameConfig.TextSecondary;
             var nameSize = _smallLabelFont.MeasureString(character.Name);
             var nameX = cellRect.X + cellRect.Width / 2f - nameSize.X / 2f;
-            _smallLabelFont.DrawText(_spriteBatch, character.Name, new Vector2(nameX, iconRect.Bottom + 4), GameConfig.TextDark);
+            _smallLabelFont.DrawText(_spriteBatch, character.Name, new Vector2(nameX, iconRect.Bottom + 5), nameColor);
         }
 
         var status = $"{_selectedCharacters.Count} / 2 体選択中";
         var statusSize = _smallLabelFont.MeasureString(status);
-        _smallLabelFont.DrawText(_spriteBatch, status, new Vector2(GameConfig.WindowWidth / 2f - statusSize.X / 2f, _charNextButtonRect.Top - 22), GameConfig.TextDark);
+        _smallLabelFont.DrawText(_spriteBatch, status, new Vector2(GameConfig.WindowWidth / 2f - statusSize.X / 2f, _charNextButtonRect.Top - 24), GameConfig.TextSecondary);
 
         DrawActionButton(_charNextButtonRect, "つぎへ", _selectedCharacters.Count == 2);
     }
 
     private Rectangle GetMapCardRect(int index)
     {
-        const int cardWidth = 320;
-        const int cardHeight = 100;
+        const int cardWidth = 340;
+        const int cardHeight = 110;
         var x = (GameConfig.WindowWidth - cardWidth) / 2;
-        var y = 140 + index * (cardHeight + 20);
+        var y = 150 + index * (cardHeight + 20);
         return new Rectangle(x, y, cardWidth, cardHeight);
     }
 
     private void DrawMapSelect()
     {
-        const string title = "マップを選択";
-        var titleSize = _titleFont.MeasureString(title);
-        _titleFont.DrawText(_spriteBatch, title, new Vector2(GameConfig.WindowWidth / 2f - titleSize.X / 2f, 16), GameConfig.TextDark);
+        DrawTitleWithAccent("マップを選択", GameConfig.AccentGold);
 
         for (var i = 0; i < _maps.Count; i++)
         {
@@ -385,14 +398,19 @@ public class Game1 : Game
             var rect = GetMapCardRect(i);
             var selected = ReferenceEquals(_selectedMap, map);
 
-            FillRect(rect, GameConfig.FieldBg);
-            DrawRectBorder(rect, selected ? GameConfig.BallBlue : GameConfig.FieldBorder, selected ? 4 : 2);
+            DrawShadow(rect, GameConfig.CardRadius);
+            FillRoundedRect(rect, GameConfig.CardRadius, GameConfig.PanelBg);
+            DrawRoundedRectBorder(rect, GameConfig.CardRadius, selected ? GameConfig.BallBlue : GameConfig.PanelBorder, selected ? 3 : 2);
 
             var nameSize = _labelFont.MeasureString(map.Name);
-            _labelFont.DrawText(_spriteBatch, map.Name, new Vector2(rect.Center.X - nameSize.X / 2f, rect.Center.Y - nameSize.Y / 2f), GameConfig.TextDark);
+            _labelFont.DrawText(_spriteBatch, map.Name, new Vector2(rect.Center.X - nameSize.X / 2f, rect.Center.Y - nameSize.Y - 2), GameConfig.TextPrimary);
+
+            var sub = $"{map.Size} × {map.Size}";
+            var subSize = _tinyLabelFont.MeasureString(sub);
+            _tinyLabelFont.DrawText(_spriteBatch, sub, new Vector2(rect.Center.X - subSize.X / 2f, rect.Center.Y + 6), GameConfig.TextSecondary);
         }
 
-        DrawActionButton(_mapBackButtonRect, "もどる", true);
+        DrawActionButton(_mapBackButtonRect, "もどる", true, primary: false);
         DrawActionButton(_mapNextButtonRect, "バトル開始", _selectedMap is not null);
     }
 
@@ -404,13 +422,14 @@ public class Game1 : Game
         DrawHpBar(_ballA, field.Left, 66, alignRight: false);
         DrawHpBar(_ballB, field.Left + field.Width - 240, 66, alignRight: true);
 
-        FillRect(field, GameConfig.FieldBg);
-        DrawRectBorder(field, GameConfig.FieldBorder, 3);
+        DrawShadow(field, GameConfig.FieldRadius);
+        FillRoundedRect(field, GameConfig.FieldRadius, GameConfig.FieldBg);
+        DrawRoundedRectBorder(field, GameConfig.FieldRadius, GameConfig.FieldBorder, 3);
 
         DrawBall(_ballA);
         DrawBall(_ballB);
 
-        DrawActionButton(_backToSelectButtonRect, "もどる", true);
+        DrawActionButton(_backToSelectButtonRect, "もどる", true, primary: false, small: true);
         DrawActionButton(_retryButtonRect, "リセット", true);
 
         if (_resultText is not null)
@@ -423,7 +442,21 @@ public class Game1 : Game
     {
         const string title = "玉対戦ゲーム";
         var size = _titleFont.MeasureString(title);
-        _titleFont.DrawText(_spriteBatch, title, new Vector2(GameConfig.WindowWidth / 2f - size.X / 2f, 12), GameConfig.TextDark);
+        var pos = new Vector2(GameConfig.WindowWidth / 2f - size.X / 2f, 10);
+        DrawTextWithShadow(_titleFont, title, pos, GameConfig.TextPrimary);
+    }
+
+    /// <summary>タイトルの下にアクセントカラーの短い下線を添えて画面の見出しにする。</summary>
+    private void DrawTitleWithAccent(string title, Color accent)
+    {
+        var size = _titleFont.MeasureString(title);
+        var pos = new Vector2(GameConfig.WindowWidth / 2f - size.X / 2f, 10);
+        DrawTextWithShadow(_titleFont, title, pos, GameConfig.TextPrimary);
+
+        const int barWidth = 56;
+        const int barHeight = 4;
+        var barRect = new Rectangle((int)(GameConfig.WindowWidth / 2f - barWidth / 2f), (int)(pos.Y + size.Y + 4), barWidth, barHeight);
+        FillRoundedRect(barRect, barHeight / 2, accent);
     }
 
     private void DrawHpBar(Ball ball, int x, int y, bool alignRight)
@@ -431,20 +464,23 @@ public class Game1 : Game
         const int width = 240;
         const int height = 22;
 
+        var teamColor = ball.Color;
         var label = $"{ball.Name}  HP {ball.Hp}/{ball.MaxHp}";
         var labelSize = _labelFont.MeasureString(label);
         var labelX = alignRight ? x + width - labelSize.X : x;
-        _labelFont.DrawText(_spriteBatch, label, new Vector2(labelX, y - labelSize.Y - 2), GameConfig.TextDark);
+        _labelFont.DrawText(_spriteBatch, label, new Vector2(labelX, y - labelSize.Y - 4), GameConfig.TextPrimary);
 
-        FillRect(new Rectangle(x, y, width, height), GameConfig.HpBarBg);
+        var barRect = new Rectangle(x, y, width, height);
+        FillRoundedRect(barRect, GameConfig.BarRadius, GameConfig.HpBarBg);
+
         var ratio = ball.MaxHp > 0 ? (float)ball.Hp / ball.MaxHp : 0f;
         var fillWidth = (int)(width * ratio);
         if (fillWidth > 0)
         {
             var fillX = alignRight ? x + width - fillWidth : x;
-            FillRect(new Rectangle(fillX, y, fillWidth, height), HpBarColor(ratio));
+            FillRoundedRect(new Rectangle(fillX, y, fillWidth, height), GameConfig.BarRadius, HpBarColor(ratio));
         }
-        DrawRectBorder(new Rectangle(x, y, width, height), GameConfig.TextDark, 2);
+        DrawRoundedRectBorder(barRect, GameConfig.BarRadius, new Color((int)teamColor.R, (int)teamColor.G, (int)teamColor.B, 130), 2);
     }
 
     private static Color HpBarColor(float ratio)
@@ -457,12 +493,19 @@ public class Game1 : Game
     private void DrawBall(Ball ball)
     {
         var color = ball.Alive ? ball.Color : GameConfig.DeadGray;
+
+        // 淡いグロー(一回り大きい半透明の円)でネオンっぽい浮遊感を出す
+        if (ball.Alive)
+        {
+            FillCircle(ball.Position, ball.Radius * 1.35f, new Color((int)color.R, (int)color.G, (int)color.B, 45));
+        }
+
         if (ball.Alive && ball.InvincibleTimer > 0 && (ball.InvincibleTimer / 3) % 2 == 0)
         {
             color = new Color(Math.Min(255, color.R + 70), Math.Min(255, color.G + 70), Math.Min(255, color.B + 70));
         }
         FillCircle(ball.Position, ball.Radius, color);
-        DrawCircleOutline(ball.Position, ball.Radius, GameConfig.TextDark, 2);
+        DrawCircleOutline(ball.Position, ball.Radius, GameConfig.TextPrimary, 2);
 
         if (ball.Icon is not null)
         {
@@ -473,40 +516,154 @@ public class Game1 : Game
         }
     }
 
-    /// <summary>有効/無効を切り替えられる汎用の画面遷移ボタン。</summary>
-    private void DrawActionButton(Rectangle rect, string label, bool enabled)
+    /// <summary>有効/無効を切り替えられる汎用の画面遷移ボタン。primary=falseで控えめな配色になる。</summary>
+    private void DrawActionButton(Rectangle rect, string label, bool enabled, bool primary = true, bool small = false)
     {
         var mouse = Mouse.GetState();
         var hover = enabled && rect.Contains(mouse.Position);
-        var bg = !enabled ? new Color(190, 190, 190) : hover ? GameConfig.ButtonHoverBg : GameConfig.ButtonBg;
-        FillRect(rect, bg);
-        DrawRectBorder(rect, GameConfig.TextDark, 2);
 
-        var size = _buttonFont.MeasureString(label);
+        Color bg;
+        Color border;
+        Color text;
+        if (!enabled)
+        {
+            bg = GameConfig.ButtonDisabledBg;
+            border = GameConfig.PanelBorder;
+            text = GameConfig.TextDisabled;
+        }
+        else if (primary)
+        {
+            bg = hover ? GameConfig.AccentPurple : GameConfig.ButtonBg;
+            border = GameConfig.AccentPurple;
+            text = GameConfig.TextPrimary;
+        }
+        else
+        {
+            bg = hover ? GameConfig.ButtonHoverBg : GameConfig.ButtonBg;
+            border = GameConfig.PanelBorder;
+            text = GameConfig.TextSecondary;
+        }
+
+        var radius = small ? GameConfig.ButtonRadius - 2 : GameConfig.ButtonRadius;
+        DrawShadow(rect, radius);
+        FillRoundedRect(rect, radius, bg);
+        DrawRoundedRectBorder(rect, radius, border, 2);
+
+        var font = small ? _smallLabelFont : _buttonFont;
+        var size = font.MeasureString(label);
         var pos = new Vector2(rect.Center.X - size.X / 2f, rect.Center.Y - size.Y / 2f);
-        _buttonFont.DrawText(_spriteBatch, label, pos, enabled ? Color.White : new Color(235, 235, 235));
+        font.DrawText(_spriteBatch, label, pos, text);
     }
 
     private void DrawResultOverlay(string text, Rectangle field)
     {
-        var overlay = new Color(0, 0, 0, 120);
-        FillRect(field, overlay);
+        var overlay = new Color(8, 9, 14, 150);
+        FillRoundedRect(field, GameConfig.FieldRadius, overlay);
 
         var size = _resultFont.MeasureString(text);
-        var pos = new Vector2(
-            GameConfig.WindowWidth / 2f - size.X / 2f,
-            field.Top + field.Height / 2f - size.Y / 2f);
-        _resultFont.DrawText(_spriteBatch, text, pos, Color.White);
+        var cardWidth = size.X + 64;
+        var cardHeight = size.Y + 36;
+        var cardRect = new Rectangle(
+            (int)(GameConfig.WindowWidth / 2f - cardWidth / 2f),
+            (int)(field.Top + field.Height / 2f - cardHeight / 2f),
+            (int)cardWidth,
+            (int)cardHeight);
+
+        var accent = text.Contains(_ballA.Name) ? _ballA.Color : text.Contains(_ballB.Name) ? _ballB.Color : GameConfig.AccentGold;
+
+        DrawShadow(cardRect, GameConfig.CardRadius);
+        FillRoundedRect(cardRect, GameConfig.CardRadius, GameConfig.PanelBg);
+        DrawRoundedRectBorder(cardRect, GameConfig.CardRadius, accent, 3);
+
+        var pos = new Vector2(cardRect.Center.X - size.X / 2f, cardRect.Center.Y - size.Y / 2f);
+        DrawTextWithShadow(_resultFont, text, pos, GameConfig.TextPrimary);
+    }
+
+    /// <summary>キャラ選択グリッドの背景に敷く、角丸のパネル。</summary>
+    private void DrawPanel(Rectangle rect)
+    {
+        DrawShadow(rect, GameConfig.CardRadius);
+        FillRoundedRect(rect, GameConfig.CardRadius, GameConfig.PanelBg);
+        DrawRoundedRectBorder(rect, GameConfig.CardRadius, GameConfig.PanelBorder, 2);
+    }
+
+    /// <summary>矩形の少し下にずらした半透明の角丸を敷いて、浮いているような影を出す。</summary>
+    private void DrawShadow(Rectangle rect, int radius)
+    {
+        var shadowRect = new Rectangle(rect.X + 3, rect.Y + 5, rect.Width, rect.Height);
+        FillRoundedRect(shadowRect, radius, GameConfig.ShadowColor);
+    }
+
+    private void DrawTextWithShadow(SpriteFontBase font, string text, Vector2 pos, Color color)
+    {
+        font.DrawText(_spriteBatch, text, pos + new Vector2(2, 2), new Color(0, 0, 0, 120));
+        font.DrawText(_spriteBatch, text, pos, color);
+    }
+
+    private static Rectangle Inflate(Rectangle rect, int amount)
+    {
+        var r = rect;
+        r.Inflate(amount, amount);
+        return r;
     }
 
     private void FillRect(Rectangle rect, Color color) => _spriteBatch.Draw(_pixel, rect, color);
 
-    private void DrawRectBorder(Rectangle rect, Color color, int thickness)
+    /// <summary>角丸の矩形を塗りつぶす(中央の十字+四隅の1/4円)。</summary>
+    private void FillRoundedRect(Rectangle rect, int radius, Color color)
     {
-        FillRect(new Rectangle(rect.Left, rect.Top, rect.Width, thickness), color);
-        FillRect(new Rectangle(rect.Left, rect.Bottom - thickness, rect.Width, thickness), color);
-        FillRect(new Rectangle(rect.Left, rect.Top, thickness, rect.Height), color);
-        FillRect(new Rectangle(rect.Right - thickness, rect.Top, thickness, rect.Height), color);
+        radius = Math.Max(0, Math.Min(radius, Math.Min(rect.Width, rect.Height) / 2));
+        if (radius == 0)
+        {
+            FillRect(rect, color);
+            return;
+        }
+
+        FillRect(new Rectangle(rect.X + radius, rect.Y, rect.Width - radius * 2, rect.Height), color);
+        FillRect(new Rectangle(rect.X, rect.Y + radius, radius, rect.Height - radius * 2), color);
+        FillRect(new Rectangle(rect.Right - radius, rect.Y + radius, radius, rect.Height - radius * 2), color);
+
+        FillCircleQuadrant(new Vector2(rect.X + radius, rect.Y + radius), radius, color, -1, -1);
+        FillCircleQuadrant(new Vector2(rect.Right - radius, rect.Y + radius), radius, color, 1, -1);
+        FillCircleQuadrant(new Vector2(rect.X + radius, rect.Bottom - radius), radius, color, -1, 1);
+        FillCircleQuadrant(new Vector2(rect.Right - radius, rect.Bottom - radius), radius, color, 1, 1);
+    }
+
+    /// <summary>角丸の矩形の輪郭線だけを描く(内側は上書きしないので、下地の絵柄を消さない)。</summary>
+    private void DrawRoundedRectBorder(Rectangle rect, int radius, Color color, int thickness)
+    {
+        radius = Math.Max(0, Math.Min(radius, Math.Min(rect.Width, rect.Height) / 2));
+        thickness = Math.Max(1, thickness);
+
+        FillRect(new Rectangle(rect.X + radius, rect.Y, rect.Width - radius * 2, thickness), color);
+        FillRect(new Rectangle(rect.X + radius, rect.Bottom - thickness, rect.Width - radius * 2, thickness), color);
+        FillRect(new Rectangle(rect.X, rect.Y + radius, thickness, rect.Height - radius * 2), color);
+        FillRect(new Rectangle(rect.Right - thickness, rect.Y + radius, thickness, rect.Height - radius * 2), color);
+
+        if (radius > 0)
+        {
+            DrawCircleQuadrantRing(new Vector2(rect.X + radius, rect.Y + radius), radius, thickness, color, -1, -1);
+            DrawCircleQuadrantRing(new Vector2(rect.Right - radius, rect.Y + radius), radius, thickness, color, 1, -1);
+            DrawCircleQuadrantRing(new Vector2(rect.X + radius, rect.Bottom - radius), radius, thickness, color, -1, 1);
+            DrawCircleQuadrantRing(new Vector2(rect.Right - radius, rect.Bottom - radius), radius, thickness, color, 1, 1);
+        }
+    }
+
+    /// <summary>円の1/4の輪(外径radius・内径radius-thickness)を塗る。角丸の枠線の四隅に使う。</summary>
+    private void DrawCircleQuadrantRing(Vector2 center, int radius, int thickness, Color color, int signX, int signY)
+    {
+        var inner = Math.Max(0, radius - thickness);
+        for (var dy = 0; dy <= radius; dy++)
+        {
+            var outerDx = (int)Math.Sqrt(Math.Max(0, radius * radius - dy * dy));
+            var innerDx = dy <= inner ? (int)Math.Sqrt(Math.Max(0, inner * inner - dy * dy)) : 0;
+            var width = outerDx - innerDx;
+            if (width <= 0) continue;
+
+            var x = signX > 0 ? (int)center.X + innerDx : (int)center.X - innerDx - width;
+            var y = signY > 0 ? (int)center.Y + dy : (int)center.Y - dy;
+            FillRect(new Rectangle(x, y, width, 1), color);
+        }
     }
 
     private void FillCircle(Vector2 center, float radius, Color color)
@@ -517,6 +674,47 @@ public class Game1 : Game
             var halfWidth = (int)Math.Sqrt(Math.Max(0, r * r - y * y));
             var rect = new Rectangle((int)center.X - halfWidth, (int)center.Y + y, halfWidth * 2, 1);
             FillRect(rect, color);
+        }
+    }
+
+    /// <summary>円の1/4だけを塗りつぶす(角丸矩形の四隅を描くのに使う)。signX/signYで象限を指定。</summary>
+    private void FillCircleQuadrant(Vector2 center, int radius, Color color, int signX, int signY)
+    {
+        for (var dy = 0; dy <= radius; dy++)
+        {
+            var maxDx = (int)Math.Sqrt(Math.Max(0, radius * radius - dy * dy));
+            if (maxDx == 0) continue;
+            var x = signX > 0 ? (int)center.X : (int)center.X - maxDx;
+            var y = signY > 0 ? (int)center.Y + dy : (int)center.Y - dy;
+            FillRect(new Rectangle(x, y, maxDx, 1), color);
+        }
+    }
+
+    /// <summary>テクスチャを角丸クリップ風に描く(四隅だけ背景色相当を上から乗せてマスクする簡易実装)。</summary>
+    private void DrawRoundedTexture(Texture2D texture, Rectangle rect, int radius, Color tint)
+    {
+        _spriteBatch.Draw(texture, rect, tint);
+        radius = Math.Max(0, Math.Min(radius, Math.Min(rect.Width, rect.Height) / 2));
+        if (radius == 0) return;
+
+        var maskColor = GameConfig.PanelBg;
+        MaskCircleQuadrant(new Vector2(rect.X + radius, rect.Y + radius), radius, maskColor, -1, -1);
+        MaskCircleQuadrant(new Vector2(rect.Right - radius, rect.Y + radius), radius, maskColor, 1, -1);
+        MaskCircleQuadrant(new Vector2(rect.X + radius, rect.Bottom - radius), radius, maskColor, -1, 1);
+        MaskCircleQuadrant(new Vector2(rect.Right - radius, rect.Bottom - radius), radius, maskColor, 1, 1);
+    }
+
+    /// <summary>角の外側(円の外)だけをmaskColorで塗って四角い角を丸く見せる。</summary>
+    private void MaskCircleQuadrant(Vector2 cornerCenter, int radius, Color maskColor, int signX, int signY)
+    {
+        for (var dy = 0; dy <= radius; dy++)
+        {
+            var circleDx = (int)Math.Sqrt(Math.Max(0, radius * radius - dy * dy));
+            var outside = radius - circleDx;
+            if (outside <= 0) continue;
+            var x = signX > 0 ? (int)cornerCenter.X + circleDx : (int)cornerCenter.X - radius;
+            var y = signY > 0 ? (int)cornerCenter.Y + dy : (int)cornerCenter.Y - dy;
+            FillRect(new Rectangle(x, y, outside, 1), maskColor);
         }
     }
 
