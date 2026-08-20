@@ -16,10 +16,12 @@ public static class GameConfig
     public const int FieldTop = 190;
 
     // ---- 玉のパラメータ ----
-    // 1試合30秒〜1分半程度を目安に、ヘッドレスシミュレーション(1000試合)で
-    // 「試合時間 平均約58秒(中央値約59秒)/90%タイルで84秒」になるよう調整した値。
+    // 1試合30秒〜1分半程度を目安に、ヘッドレスシミュレーション(1000試合)で調整。
+    // 必殺技(60秒チャージ)の発動をもっと見えるようにするため、HPを100→140に引き上げ、
+    // 試合時間 平均約76秒(中央値約70秒)/90%タイルで111秒、必殺技到達率は約8割になるよう
+    // 調整した(まだ調整途中の値。手応えを見ながら今後変更してよい)。
     public const float BallRadius = 48f;
-    public const int InitialHp = 100;
+    public const int InitialHp = 140;
     public const float BaseSpeed = 3.8f;
     public const int InvincibleFrames = 30; // 連続ヒット防止の無敵時間
     public const float KnockbackSpeed = 9f;
