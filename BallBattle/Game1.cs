@@ -17,9 +17,9 @@ namespace BallBattle;
 public class Game1 : Game
 {
     private const int GridCols = 5;
-    private const int CellSize = 112;
-    private const int IconSize = 68;
-    private const int GridStartY = 78;
+    private const int CellSize = 156;
+    private const int IconSize = 96;
+    private const int GridStartY = 100;
 
     private readonly GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch = null!;
@@ -72,11 +72,11 @@ public class Game1 : Game
     protected override void Initialize()
     {
         var gridRows = (int)Math.Ceiling(23 / (double)GridCols);
-        _charNextButtonRect = new Rectangle(GameConfig.WindowWidth / 2 - 85, GridStartY + gridRows * CellSize + 30, 170, 46);
-        _mapBackButtonRect = new Rectangle(GameConfig.WindowWidth / 2 - 175, 600, 155, 46);
-        _mapNextButtonRect = new Rectangle(GameConfig.WindowWidth / 2 + 20, 600, 155, 46);
-        _backToSelectButtonRect = new Rectangle(16, 14, 92, 36);
-        _retryButtonRect = new Rectangle(GameConfig.WindowWidth / 2 - 85, GameConfig.FieldTop + GameConfig.FieldSize + 16, 170, 46);
+        _charNextButtonRect = new Rectangle(GameConfig.WindowWidth / 2 - 110, GridStartY + gridRows * CellSize + 34, 220, 58);
+        _mapBackButtonRect = new Rectangle(GameConfig.WindowWidth / 2 - 210, 500, 200, 58);
+        _mapNextButtonRect = new Rectangle(GameConfig.WindowWidth / 2 + 10, 500, 200, 58);
+        _backToSelectButtonRect = new Rectangle(20, 20, 120, 46);
+        _retryButtonRect = new Rectangle(GameConfig.WindowWidth / 2 - 110, GameConfig.FieldTop + GameConfig.FieldSize + 20, 220, 58);
 
         // base.Initialize()がLoadContent()を呼ぶので、キャラ/マップJSON読み込みが終わってから続きを行う
         base.Initialize();
@@ -99,12 +99,12 @@ public class Game1 : Game
         // 日本語を含む文字描画用に、同梱のIPAゴシックフォントを読み込む
         _fontSystem = new FontSystem();
         _fontSystem.AddFont(File.ReadAllBytes(Path.Combine(_contentRoot, "Fonts", "ipag.ttf")));
-        _titleFont = _fontSystem.GetFont(30);
-        _labelFont = _fontSystem.GetFont(16);
-        _smallLabelFont = _fontSystem.GetFont(13);
-        _tinyLabelFont = _fontSystem.GetFont(12);
-        _buttonFont = _fontSystem.GetFont(20);
-        _resultFont = _fontSystem.GetFont(38);
+        _titleFont = _fontSystem.GetFont(38);
+        _labelFont = _fontSystem.GetFont(20);
+        _smallLabelFont = _fontSystem.GetFont(16);
+        _tinyLabelFont = _fontSystem.GetFont(14);
+        _buttonFont = _fontSystem.GetFont(26);
+        _resultFont = _fontSystem.GetFont(48);
     }
 
     private Texture2D GetIcon(CharacterData character)
@@ -267,11 +267,34 @@ public class Game1 : Game
         var normal = dist > 0.0001f ? delta / dist : new Vector2(1f, 0f);
         if (dist <= 0.0001f) dist = 1f;
 
-        // ヒット時の勢い(相対速度)が大きいほどダメージが大きい
+        // ヒット時の勢い(相対速度)が大きいほどダメージが大きい(通常攻撃分・両者対称)
         var relSpeed = (a.Velocity - b.Velocity).Length();
-        var damage = (int)(GameConfig.BaseDamage + relSpeed * GameConfig.SpeedDamageFactor);
-        a.TakeDamage(damage);
-        b.TakeDamage(damage);
+        var baseDamage = (int)(GameConfig.BaseDamage + relSpeed * GameConfig.SpeedDamageFactor);
+
+        // ダッシュ突進/必殺技で突進中だった側は、相手に追加ダメージ+スタンを与える(一方向)
+        var aWasBursting = a.BurstTimer > 0;
+        var bWasBursting = b.BurstTimer > 0;
+
+        var damageToA = baseDamage + (bWasBursting ? b.CurrentBurstBonusDamage : 0);
+        var damageToB = baseDamage + (aWasBursting ? a.CurrentBurstBonusDamage : 0);
+
+        a.TakeDamage(damageToA);
+        b.TakeDamage(damageToB);
+
+        // 必殺技ゲージは「ダメージを与える/受けるたびに蓄積」(6.8)。
+        // 1回の衝突で両者が同時に与え合う分をどちらのゲージにも加算するため、
+        // HPの減り方(=自分が受けた量だけ)より早いペースで満タンに近づき、
+        // 力尽きる前に必殺技が発動できるようになっている。
+        var gaugeGain = damageToA + damageToB;
+        a.AddUltimateGauge(gaugeGain);
+        b.AddUltimateGauge(gaugeGain);
+
+        if (bWasBursting) a.ApplyStun(b.CurrentBurstStunFrames);
+        if (aWasBursting) b.ApplyStun(a.CurrentBurstStunFrames);
+
+        // 突進は命中した時点で終了する
+        if (aWasBursting) a.EndBurstOnHit();
+        if (bWasBursting) b.EndBurstOnHit();
 
         a.InvincibleTimer = GameConfig.InvincibleFrames;
         b.InvincibleTimer = GameConfig.InvincibleFrames;
@@ -381,10 +404,10 @@ public class Game1 : Game
 
     private Rectangle GetMapCardRect(int index)
     {
-        const int cardWidth = 340;
-        const int cardHeight = 110;
+        const int cardWidth = 460;
+        const int cardHeight = 150;
         var x = (GameConfig.WindowWidth - cardWidth) / 2;
-        var y = 150 + index * (cardHeight + 20);
+        var y = 210 + index * (cardHeight + 28);
         return new Rectangle(x, y, cardWidth, cardHeight);
     }
 
@@ -419,8 +442,8 @@ public class Game1 : Game
         var field = CurrentFieldRect();
 
         DrawTitle();
-        DrawHpBar(_ballA, field.Left, 66, alignRight: false);
-        DrawHpBar(_ballB, field.Left + field.Width - 240, 66, alignRight: true);
+        DrawHpBar(_ballA, field.Left, 110, alignRight: false);
+        DrawHpBar(_ballB, field.Left + field.Width - HpBarWidth, 110, alignRight: true);
 
         DrawShadow(field, GameConfig.FieldRadius);
         FillRoundedRect(field, GameConfig.FieldRadius, GameConfig.FieldBg);
@@ -459,28 +482,60 @@ public class Game1 : Game
         FillRoundedRect(barRect, barHeight / 2, accent);
     }
 
+    private const int HpBarWidth = 320;
+    private const int HpBarHeight = 28;
+    private const int MiniBarHeight = 11;
+    private const int MiniBarGap = 7;
+
     private void DrawHpBar(Ball ball, int x, int y, bool alignRight)
     {
-        const int width = 240;
-        const int height = 22;
-
         var teamColor = ball.Color;
         var label = $"{ball.Name}  HP {ball.Hp}/{ball.MaxHp}";
         var labelSize = _labelFont.MeasureString(label);
-        var labelX = alignRight ? x + width - labelSize.X : x;
+        var labelX = alignRight ? x + HpBarWidth - labelSize.X : x;
         _labelFont.DrawText(_spriteBatch, label, new Vector2(labelX, y - labelSize.Y - 4), GameConfig.TextPrimary);
 
-        var barRect = new Rectangle(x, y, width, height);
+        var barRect = new Rectangle(x, y, HpBarWidth, HpBarHeight);
         FillRoundedRect(barRect, GameConfig.BarRadius, GameConfig.HpBarBg);
 
         var ratio = ball.MaxHp > 0 ? (float)ball.Hp / ball.MaxHp : 0f;
-        var fillWidth = (int)(width * ratio);
+        var fillWidth = (int)(HpBarWidth * ratio);
         if (fillWidth > 0)
         {
-            var fillX = alignRight ? x + width - fillWidth : x;
-            FillRoundedRect(new Rectangle(fillX, y, fillWidth, height), GameConfig.BarRadius, HpBarColor(ratio));
+            var fillX = alignRight ? x + HpBarWidth - fillWidth : x;
+            FillRoundedRect(new Rectangle(fillX, y, fillWidth, HpBarHeight), GameConfig.BarRadius, HpBarColor(ratio));
         }
         DrawRoundedRectBorder(barRect, GameConfig.BarRadius, new Color((int)teamColor.R, (int)teamColor.G, (int)teamColor.B, 130), 2);
+
+        // スキルクールダウン(紫): クールダウンが明けて発動可能に近いほど満ちていく。発動可能/発動中は白枠で強調。
+        var skillReady = ball.SkillCooldownTimer <= 0 || ball.IsDashing;
+        var skillRatio = 1f - ball.SkillCooldownTimer / (float)GameConfig.DashCooldownFrames;
+        var skillY = y + HpBarHeight + MiniBarGap;
+        DrawMiniBar(x, skillY, alignRight, skillRatio, GameConfig.SkillGaugeColor, skillReady);
+
+        // 必殺技ゲージ(金): 0〜100%。満タン(=発動中)は白枠で強調。
+        var ultimateRatio = ball.UltimateGauge / (float)GameConfig.UltimateGaugeMax;
+        var ultimateY = skillY + MiniBarHeight + MiniBarGap;
+        DrawMiniBar(x, ultimateY, alignRight, ultimateRatio, GameConfig.UltimateGaugeColor, ball.IsUltimateActive);
+    }
+
+    private void DrawMiniBar(int x, int y, bool alignRight, float ratio, Color color, bool highlight)
+    {
+        ratio = MathHelper.Clamp(ratio, 0f, 1f);
+        var rect = new Rectangle(x, y, HpBarWidth, MiniBarHeight);
+        FillRoundedRect(rect, GameConfig.MiniBarRadius, GameConfig.HpBarBg);
+
+        var fillWidth = (int)(HpBarWidth * ratio);
+        if (fillWidth > 0)
+        {
+            var fillX = alignRight ? x + HpBarWidth - fillWidth : x;
+            FillRoundedRect(new Rectangle(fillX, y, fillWidth, MiniBarHeight), GameConfig.MiniBarRadius, color);
+        }
+
+        if (highlight)
+        {
+            DrawRoundedRectBorder(rect, GameConfig.MiniBarRadius, GameConfig.TextPrimary, 2);
+        }
     }
 
     private static Color HpBarColor(float ratio)
@@ -493,11 +548,27 @@ public class Game1 : Game
     private void DrawBall(Ball ball)
     {
         var color = ball.Alive ? ball.Color : GameConfig.DeadGray;
+        var burstColor = ball.IsUltimateActive ? GameConfig.UltimateGaugeColor : color;
 
-        // 淡いグロー(一回り大きい半透明の円)でネオンっぽい浮遊感を出す
+        // ダッシュ/必殺技で突進中は、進行方向の逆側に残像(だんだん薄く小さくなる円)を残す
+        if (ball.Alive && ball.BurstTimer > 0 && ball.Velocity.LengthSquared() > 0.0001f)
+        {
+            var dir = Vector2.Normalize(ball.Velocity);
+            for (var i = 1; i <= 3; i++)
+            {
+                var trailPos = ball.Position - dir * (ball.Radius * 0.55f * i);
+                var trailAlpha = 100 / (i + 1);
+                var trailRadius = ball.Radius * (1f - i * 0.15f);
+                FillCircle(trailPos, trailRadius, new Color((int)burstColor.R, (int)burstColor.G, (int)burstColor.B, trailAlpha));
+            }
+        }
+
+        // 淡いグロー(一回り大きい半透明の円)でネオンっぽい浮遊感を出す。突進中はグローを強調。
         if (ball.Alive)
         {
-            FillCircle(ball.Position, ball.Radius * 1.35f, new Color((int)color.R, (int)color.G, (int)color.B, 45));
+            var glowScale = ball.BurstTimer > 0 ? 1.7f : 1.35f;
+            var glowAlpha = ball.BurstTimer > 0 ? 90 : 45;
+            FillCircle(ball.Position, ball.Radius * glowScale, new Color((int)burstColor.R, (int)burstColor.G, (int)burstColor.B, glowAlpha));
         }
 
         if (ball.Alive && ball.InvincibleTimer > 0 && (ball.InvincibleTimer / 3) % 2 == 0)
@@ -505,7 +576,8 @@ public class Game1 : Game
             color = new Color(Math.Min(255, color.R + 70), Math.Min(255, color.G + 70), Math.Min(255, color.B + 70));
         }
         FillCircle(ball.Position, ball.Radius, color);
-        DrawCircleOutline(ball.Position, ball.Radius, GameConfig.TextPrimary, 2);
+        var outlineColor = ball.IsStunned ? GameConfig.StunColor : GameConfig.TextPrimary;
+        DrawCircleOutline(ball.Position, ball.Radius, outlineColor, ball.BurstTimer > 0 ? 3 : 2);
 
         if (ball.Icon is not null)
         {
@@ -513,6 +585,19 @@ public class Game1 : Game
             var dest = new Rectangle((int)ball.Position.X - iconSize / 2, (int)ball.Position.Y - iconSize / 2, iconSize, iconSize);
             var tint = ball.Alive ? Color.White : new Color(190, 190, 190);
             _spriteBatch.Draw(ball.Icon, dest, tint);
+        }
+
+        // スタン中は頭上に3つの星をくるくる回して行動不能を表す
+        if (ball.Alive && ball.IsStunned)
+        {
+            var angleBase = ball.StunTimer * 0.3f;
+            var starCenter = ball.Position + new Vector2(0, -ball.Radius * 1.25f);
+            for (var i = 0; i < 3; i++)
+            {
+                var angle = angleBase + i * MathHelper.TwoPi / 3f;
+                var orbit = new Vector2((float)Math.Cos(angle), (float)Math.Sin(angle) * 0.5f) * (ball.Radius * 0.4f);
+                FillCircle(starCenter + orbit, 4.5f, GameConfig.StunColor);
+            }
         }
     }
 

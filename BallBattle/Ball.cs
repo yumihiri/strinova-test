@@ -4,7 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace BallBattle;
 
-/// <summary>対戦キャラクター(玉)。ランダム移動と体当たり衝突のみを扱う。</summary>
+/// <summary>対戦キャラクター(玉)。ランダム移動・体当たり衝突・ダッシュ突進スキル・必殺技を扱う。</summary>
 public class Ball
 {
     public Vector2 Position;
@@ -20,6 +20,26 @@ public class Ball
     public int InvincibleTimer;
     public bool Alive = true;
 
+    // ---- スキル(ダッシュ突進・クールダウン制) ----
+    public int SkillCooldownTimer;
+
+    // ---- 必殺技(ゲージ制) ----
+    public int UltimateGauge;
+
+    // ---- ダッシュ/必殺技共通の「突進状態」 ----
+    public int BurstTimer;
+    public bool IsUltimateBurst;
+    private float _speedMultiplier = 1f;
+
+    // ---- スタン(行動不能) ----
+    public int StunTimer;
+
+    public bool IsDashing => BurstTimer > 0 && !IsUltimateBurst;
+    public bool IsUltimateActive => BurstTimer > 0 && IsUltimateBurst;
+    public bool IsStunned => StunTimer > 0;
+    public int CurrentBurstBonusDamage => BurstTimer <= 0 ? 0 : IsUltimateBurst ? GameConfig.UltimateBonusDamage : GameConfig.DashBonusDamage;
+    public int CurrentBurstStunFrames => BurstTimer <= 0 ? 0 : IsUltimateBurst ? GameConfig.UltimateStunFrames : GameConfig.DashStunFrames;
+
     private readonly Random _random;
 
     public Ball(Vector2 position, Color color, string name, Random random, int maxHp = GameConfig.InitialHp, float speed = GameConfig.BaseSpeed)
@@ -31,6 +51,7 @@ public class Ball
         MaxHp = maxHp;
         Hp = maxHp;
         Speed = speed;
+        SkillCooldownTimer = GameConfig.DashCooldownFrames;
         PickNewDirection();
     }
 
@@ -56,7 +77,7 @@ public class Ball
             attempts++;
         } while (attempts < 30 && !IsDirectionValid(angle, awayFromLeft, awayFromRight, awayFromTop, awayFromBottom));
 
-        Velocity = new Vector2((float)Math.Cos(angle), (float)Math.Sin(angle)) * Speed;
+        Velocity = new Vector2((float)Math.Cos(angle), (float)Math.Sin(angle)) * Speed * _speedMultiplier;
     }
 
     private static bool IsDirectionValid(float angle, bool awayFromLeft, bool awayFromRight, bool awayFromTop, bool awayFromBottom)
@@ -78,6 +99,16 @@ public class Ball
         {
             InvincibleTimer -= 1;
         }
+
+        // スタン中は行動不能。クールダウンやゲージの経過も止まる。
+        if (StunTimer > 0)
+        {
+            StunTimer -= 1;
+            return;
+        }
+
+        UpdateBurst();
+        UpdateSkillCooldown();
 
         Position += Velocity;
 
@@ -117,6 +148,101 @@ public class Ball
         if (hitLeft || hitRight || hitTop || hitBottom)
         {
             PickNewDirection(hitLeft, hitRight, hitTop, hitBottom);
+        }
+    }
+
+    private void UpdateBurst()
+    {
+        if (BurstTimer <= 0) return;
+
+        BurstTimer -= 1;
+        if (BurstTimer == 0)
+        {
+            EndBurst();
+        }
+    }
+
+    /// <summary>ダッシュ/必殺技の突進状態を終える。速度の向きは保ったまま通常速度に戻す。</summary>
+    private void EndBurst()
+    {
+        IsUltimateBurst = false;
+        _speedMultiplier = 1f;
+        if (Velocity.LengthSquared() > 0.0001f)
+        {
+            Velocity = Vector2.Normalize(Velocity) * Speed;
+        }
+    }
+
+    private void UpdateSkillCooldown()
+    {
+        if (BurstTimer > 0) return; // 突進中はクールダウン進行・新規発動しない
+
+        if (SkillCooldownTimer > 0)
+        {
+            SkillCooldownTimer -= 1;
+            return;
+        }
+
+        TriggerDash();
+    }
+
+    /// <summary>クールダウンが明けたタイミングで自動発動するダッシュ突進。</summary>
+    private void TriggerDash()
+    {
+        IsUltimateBurst = false;
+        BurstTimer = GameConfig.DashDurationFrames;
+        _speedMultiplier = GameConfig.DashSpeedMultiplier;
+        if (Velocity.LengthSquared() > 0.0001f)
+        {
+            Velocity = Vector2.Normalize(Velocity) * Speed * _speedMultiplier;
+        }
+        SkillCooldownTimer = GameConfig.DashCooldownFrames;
+    }
+
+    /// <summary>ゲージが100%に達したタイミングで自動発動する必殺技。</summary>
+    private void TriggerUltimate()
+    {
+        IsUltimateBurst = true;
+        BurstTimer = GameConfig.UltimateDurationFrames;
+        _speedMultiplier = GameConfig.UltimateSpeedMultiplier;
+        if (Velocity.LengthSquared() > 0.0001f)
+        {
+            Velocity = Vector2.Normalize(Velocity) * Speed * _speedMultiplier;
+        }
+        UltimateGauge = 0;
+    }
+
+    /// <summary>ダメージを受けた量に応じて必殺技ゲージを蓄積し、満タンなら自動発動する。</summary>
+    public void AddUltimateGauge(int amount)
+    {
+        if (!Alive) return;
+        UltimateGauge = Math.Min(GameConfig.UltimateGaugeMax, UltimateGauge + amount);
+        if (UltimateGauge >= GameConfig.UltimateGaugeMax && StunTimer <= 0)
+        {
+            TriggerUltimate();
+        }
+    }
+
+    /// <summary>ダッシュ/必殺技を相手に当てた際、その突進状態を即座に終える(命中で突進が終わる)。</summary>
+    public void EndBurstOnHit()
+    {
+        if (BurstTimer > 0)
+        {
+            BurstTimer = 0;
+            EndBurst();
+        }
+    }
+
+    public void ApplyStun(int frames)
+    {
+        if (!Alive || frames <= 0) return;
+        StunTimer = Math.Max(StunTimer, frames);
+        // スタンされたら突進状態は強制解除
+        if (BurstTimer > 0)
+        {
+            BurstTimer = 0;
+            IsUltimateBurst = false;
+            _speedMultiplier = 1f;
         }
     }
 
