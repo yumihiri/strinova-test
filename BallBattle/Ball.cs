@@ -14,7 +14,6 @@ public class Ball
     public int MaxHp = GameConfig.InitialHp;
     public int Hp = GameConfig.InitialHp;
     public float Speed = GameConfig.BaseSpeed;
-    public int DirectionTimer;
     public int InvincibleTimer;
     public bool Alive = true;
 
@@ -29,24 +28,37 @@ public class Ball
         PickNewDirection();
     }
 
-    private void PickNewDirection(int? minFrames = null, int? maxFrames = null)
+    /// <summary>
+    /// 新しいランダムな方向を選ぶ。壁に当たった直後に呼ぶ場合は、
+    /// その壁から再び外に出ようとする向きを選ばないよう、フィールド内側を向く角度のみを候補にする。
+    /// </summary>
+    private void PickNewDirection(bool awayFromLeft = false, bool awayFromRight = false, bool awayFromTop = false, bool awayFromBottom = false)
     {
-        var angle = (float)(_random.NextDouble() * Math.PI * 2);
+        float angle;
+        var attempts = 0;
+        do
+        {
+            angle = (float)(_random.NextDouble() * Math.PI * 2);
+            attempts++;
+        } while (attempts < 30 && !IsDirectionValid(angle, awayFromLeft, awayFromRight, awayFromTop, awayFromBottom));
+
         Velocity = new Vector2((float)Math.Cos(angle), (float)Math.Sin(angle)) * Speed;
-        var lo = minFrames ?? GameConfig.DirectionChangeMinFrames;
-        var hi = maxFrames ?? GameConfig.DirectionChangeMaxFrames;
-        DirectionTimer = _random.Next(lo, hi + 1);
+    }
+
+    private static bool IsDirectionValid(float angle, bool awayFromLeft, bool awayFromRight, bool awayFromTop, bool awayFromBottom)
+    {
+        var dx = (float)Math.Cos(angle);
+        var dy = (float)Math.Sin(angle);
+        if (awayFromLeft && dx <= 0) return false;
+        if (awayFromRight && dx >= 0) return false;
+        if (awayFromTop && dy <= 0) return false;
+        if (awayFromBottom && dy >= 0) return false;
+        return true;
     }
 
     public void Update(Rectangle field)
     {
         if (!Alive) return;
-
-        DirectionTimer -= 1;
-        if (DirectionTimer <= 0)
-        {
-            PickNewDirection();
-        }
 
         if (InvincibleTimer > 0)
         {
@@ -60,26 +72,37 @@ public class Ball
         var minY = field.Top + Radius;
         var maxY = field.Bottom - Radius;
 
+        var hitLeft = false;
+        var hitRight = false;
+        var hitTop = false;
+        var hitBottom = false;
+
         if (Position.X < minX)
         {
             Position.X = minX;
-            Velocity.X = Math.Abs(Velocity.X);
+            hitLeft = true;
         }
         else if (Position.X > maxX)
         {
             Position.X = maxX;
-            Velocity.X = -Math.Abs(Velocity.X);
+            hitRight = true;
         }
 
         if (Position.Y < minY)
         {
             Position.Y = minY;
-            Velocity.Y = Math.Abs(Velocity.Y);
+            hitTop = true;
         }
         else if (Position.Y > maxY)
         {
             Position.Y = maxY;
-            Velocity.Y = -Math.Abs(Velocity.Y);
+            hitBottom = true;
+        }
+
+        // 壁に当たるまで直進し、当たったら新しいランダムな方向へ進み直す
+        if (hitLeft || hitRight || hitTop || hitBottom)
+        {
+            PickNewDirection(hitLeft, hitRight, hitTop, hitBottom);
         }
     }
 
@@ -107,6 +130,5 @@ public class Ball
     public void ApplyKnockback(Vector2 direction)
     {
         Velocity = direction * GameConfig.KnockbackSpeed;
-        DirectionTimer = GameConfig.KnockbackDirectionLockFrames;
     }
 }

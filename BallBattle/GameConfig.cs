@@ -16,11 +16,8 @@ public static class GameConfig
     public const float BallRadius = 22f;
     public const int InitialHp = 100;
     public const float BaseSpeed = 3f;
-    public const int DirectionChangeMinFrames = 30;
-    public const int DirectionChangeMaxFrames = 90;
     public const int InvincibleFrames = 30; // 連続ヒット防止の無敵時間
     public const float KnockbackSpeed = 7f;
-    public const int KnockbackDirectionLockFrames = 15;
     public const int BaseDamage = 6;
     public const float SpeedDamageFactor = 2.5f;
 
