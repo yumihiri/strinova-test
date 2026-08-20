@@ -281,14 +281,6 @@ public class Game1 : Game
         a.TakeDamage(damageToA);
         b.TakeDamage(damageToB);
 
-        // 必殺技ゲージは「ダメージを与える/受けるたびに蓄積」(6.8)。
-        // 1回の衝突で両者が同時に与え合う分をどちらのゲージにも加算するため、
-        // HPの減り方(=自分が受けた量だけ)より早いペースで満タンに近づき、
-        // 力尽きる前に必殺技が発動できるようになっている。
-        var gaugeGain = damageToA + damageToB;
-        a.AddUltimateGauge(gaugeGain);
-        b.AddUltimateGauge(gaugeGain);
-
         if (bWasBursting) a.ApplyStun(b.CurrentBurstStunFrames);
         if (aWasBursting) b.ApplyStun(a.CurrentBurstStunFrames);
 

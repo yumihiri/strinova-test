@@ -23,8 +23,8 @@ public class Ball
     // ---- スキル(ダッシュ突進・クールダウン制) ----
     public int SkillCooldownTimer;
 
-    // ---- 必殺技(ゲージ制) ----
-    public int UltimateGauge;
+    // ---- 必殺技(時間経過制ゲージ) ----
+    public float UltimateGauge;
 
     // ---- ダッシュ/必殺技共通の「突進状態」 ----
     public int BurstTimer;
@@ -109,6 +109,7 @@ public class Ball
 
         UpdateBurst();
         UpdateSkillCooldown();
+        UpdateUltimateGauge();
 
         Position += Velocity;
 
@@ -212,12 +213,14 @@ public class Ball
         UltimateGauge = 0;
     }
 
-    /// <summary>ダメージを受けた量に応じて必殺技ゲージを蓄積し、満タンなら自動発動する。</summary>
-    public void AddUltimateGauge(int amount)
+    /// <summary>
+    /// 必殺技ゲージは時間経過(UltimateChargeFrames)で満タンになり、満タンで自動発動する。
+    /// キャラごとの強い/弱いはチャージ時間の差で表現する想定(現時点では全キャラ共通値)。
+    /// </summary>
+    private void UpdateUltimateGauge()
     {
-        if (!Alive) return;
-        UltimateGauge = Math.Min(GameConfig.UltimateGaugeMax, UltimateGauge + amount);
-        if (UltimateGauge >= GameConfig.UltimateGaugeMax && StunTimer <= 0)
+        UltimateGauge = Math.Min(GameConfig.UltimateGaugeMax, UltimateGauge + GameConfig.UltimateGaugeMax / (float)GameConfig.UltimateChargeFrames);
+        if (UltimateGauge >= GameConfig.UltimateGaugeMax)
         {
             TriggerUltimate();
         }

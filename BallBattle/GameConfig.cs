@@ -16,30 +16,30 @@ public static class GameConfig
     public const int FieldTop = 190;
 
     // ---- 玉のパラメータ ----
-    // BallRadius/BaseDamage/SpeedDamageFactorは、ヘッドレスシミュレーション(1000試合)で
-    // 「衝突間隔 約9〜10秒」「試合時間 平均49秒/中央値46秒/90%タイルで77秒」になるよう調整した値
-    // (フィールド拡大前の基準値。拡大後も同じ統計になるよう上記の倍率で追従させてある)。
+    // 1試合30秒〜1分半程度を目安に、ヘッドレスシミュレーション(1000試合)で
+    // 「試合時間 平均約58秒(中央値約59秒)/90%タイルで84秒」になるよう調整した値。
     public const float BallRadius = 48f;
     public const int InitialHp = 100;
     public const float BaseSpeed = 3.8f;
     public const int InvincibleFrames = 30; // 連続ヒット防止の無敵時間
     public const float KnockbackSpeed = 9f;
-    public const int BaseDamage = 9;
-    public const float SpeedDamageFactor = 2.37f;
+    public const int BaseDamage = 5;
+    public const float SpeedDamageFactor = 1.4f;
 
     // ---- スキル(クールダウン制・ダッシュ突進) ----
-    // ヘッドレスシミュレーション(1000試合)で、通常衝突・スキル・必殺技のバランスを
-    // 「1試合あたり平均約36秒(中央値約34秒)、必殺技の命中率は約5割」になるよう調整した値。
-    // UltimateDurationFramesは、短すぎると自然な衝突間隔(約9秒)に対してほぼ命中しないことが
-    // シミュレーションで判明したため、意図的に長め(2秒)にしてある。
     public const int DashCooldownFrames = 300; // 5秒
     public const float DashSpeedMultiplier = 2.5f;
     public const int DashDurationFrames = 20;
     public const int DashBonusDamage = 8;
     public const int DashStunFrames = 18;
 
-    // ---- 必殺技(ゲージ制) ----
+    // ---- 必殺技(時間経過制ゲージ) ----
+    // ダメージ量ではなく経過フレーム数でゲージが満タンになる方式。キャラごとの強い/弱いに
+    // 応じて後で個別のチャージ時間に調整する想定だが、今回は全キャラ共通の1種類のみなので
+    // 固定値にしてある。60秒(UltimateChargeFrames)で満タンになり、1試合(目安60秒前後)の
+    // 半分弱くらいの試合で発動できる計算(シミュレーションで約49%の試合が到達を確認)。
     public const int UltimateGaugeMax = 100;
+    public const int UltimateChargeFrames = 3600; // 60秒
     public const float UltimateSpeedMultiplier = 3.0f;
     public const int UltimateDurationFrames = 120; // 2秒
     public const int UltimateBonusDamage = 16;
