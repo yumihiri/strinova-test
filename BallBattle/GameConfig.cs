@@ -13,13 +13,15 @@ public static class GameConfig
     public const int FieldTop = 100;
 
     // ---- 玉のパラメータ ----
-    public const float BallRadius = 22f;
+    // BallRadius/BaseDamage/SpeedDamageFactorは、ヘッドレスシミュレーション(1000試合)で
+    // 「衝突間隔 約9〜10秒」「試合時間 平均49秒/中央値46秒/90%タイルで77秒」になるよう調整した値。
+    public const float BallRadius = 38f;
     public const int InitialHp = 100;
     public const float BaseSpeed = 3f;
     public const int InvincibleFrames = 30; // 連続ヒット防止の無敵時間
     public const float KnockbackSpeed = 7f;
-    public const int BaseDamage = 6;
-    public const float SpeedDamageFactor = 2.5f;
+    public const int BaseDamage = 9;
+    public const float SpeedDamageFactor = 3.0f;
 
     public static Rectangle FieldRect => new(FieldLeft, FieldTop, FieldSize, FieldSize);
 
